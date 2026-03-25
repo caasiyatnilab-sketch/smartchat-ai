@@ -1,0 +1,30 @@
+{
+  "name": "smartchat-ai",
+  "region": "Oregon",
+  "databases": [
+    {
+      "name": "smartchat",
+      "plan": "free"
+    }
+  ],
+  "services": [
+    {
+      "name": "smartchat-backend",
+      "type": "web",
+      "region": "Oregon",
+      "buildCommand": "cd backend && npm install",
+      "startCommand": "cd backend && npm start",
+      "envVars": [
+        {
+          "key": "NODE_ENV",
+          "value": "production"
+        },
+        {
+          "key": "DATABASE_URL",
+          "value": "postgres://postgres:password@localhost:5432/smartchat",
+          "generateValue": true
+        }
+      ]
+    }
+  ]
+}

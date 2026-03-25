@@ -6,6 +6,7 @@ const navItems = [
   { path: '/chatbots', label: 'Chatbots', icon: '🤖' },
   { path: '/conversations', label: 'Conversations', icon: '💬' },
   { path: '/analytics', label: 'Analytics', icon: '📈' },
+  { path: '/subscription', label: 'Plans', icon: '💰' },
 ]
 
 export default function Layout() {

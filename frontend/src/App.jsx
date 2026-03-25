@@ -8,6 +8,7 @@ import Chatbots from './pages/Chatbots'
 import ChatbotDetail from './pages/ChatbotDetail'
 import Analytics from './pages/Analytics'
 import Conversations from './pages/Conversations'
+import Subscription from './pages/Subscription'
 import Layout from './components/Layout'
 
 function PrivateRoute({ children }) {
@@ -58,6 +59,7 @@ function App() {
             <Route path="chatbots/:id" element={<ChatbotDetail />} />
             <Route path="analytics" element={<Analytics />} />
             <Route path="conversations" element={<Conversations />} />
+            <Route path="subscription" element={<Subscription />} />
           </Route>
         </Routes>
       </AuthProvider>
