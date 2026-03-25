@@ -1,122 +1,121 @@
-# Deployment Guide
+# SmartChat AI - Deployment Guide
 
 ## Quick Deploy Options
 
-### Option 1: Render (Backend + PostgreSQL)
+### Option 1: Render.com (Recommended)
 
 1. **Create Render Account**
-   - Go to [render.com](https://render.com) and sign up
-   - Connect your GitHub repository
+   - Go to [render.com](https://render.com) → Sign Up with GitHub
+   - Authorize access to your repos
 
-2. **Deploy Backend**
-   - Create a new Web Service
-   - Connect your GitHub repo
-   - Settings:
-     - Build Command: `cd backend && npm install`
-     - Start Command: `cd backend && npm start`
-     - Environment Variables:
-       - `PORT`: 3000
-       - `NODE_ENV`: production
-       - `DATABASE_URL`: (your PostgreSQL connection string)
-       - `JWT_SECRET`: (generate a secure random string)
-       - `OPENAI_API_KEY`: (your OpenAI key, optional)
-       - `FRONTEND_URL`: (your frontend URL)
+2. **Deploy Database**
+   - In Render dashboard: New → PostgreSQL
+   - Name: `smartchat-db`
+   - Plan: Free
+   - Copy the "Internal Database URL" after creation
 
-3. **Create PostgreSQL Database**
-   - In Render dashboard, create a new PostgreSQL
-   - Copy the connection string to DATABASE_URL
+3. **Deploy Backend**
+   - New → Web Service
+   - Connect: `caasiyatnilab-sketch/smartchat-ai`
+   - Branch: `master`
+   - Build Command: `cd backend && npm install`
+   - Start Command: `cd backend && npm start`
+   - Environment Variables:
+     ```
+     NODE_ENV=production
+     DATABASE_URL=<paste-from-step-2>
+     JWT_SECRET=<generate-random-string>
+     OPENAI_API_KEY=<your-openai-key>
+     FRONTEND_URL=<your-frontend-url>
+     ```
 
-### Option 2: Railway
-
-1. Go to [railway.app](https://railway.app)
-2. Create new project from GitHub repo
-3. Add PostgreSQL plugin
-4. Set environment variables
-5. Deploy
-
-### Option 3: Fly.io
-
-1. Install flyctl: `curl -L https://fly.io/install.sh | sh`
-2. `fly launch` in the backend directory
-3. `fly deploy`
-4. Add PostgreSQL: `fly postgres create`
+4. **Deploy Frontend**
+   - New → Web Service
+   - Connect: `caasiyatnilab-sketch/smartchat-ai`
+   - Branch: `master`
+   - Build Command: `cd frontend && npm install && npm run build`
+   - Start Command: `npx serve dist -l 80`
+   - Environment Variables:
+     ```
+     VITE_API_URL=<your-backend-url>
+     ```
 
 ---
 
-## Frontend Deployment
+### Option 2: Docker (Local)
 
-### Vercel (Recommended)
+```bash
+# Clone and deploy
+git clone https://github.com/caasiyatnilab-sketch/smartchat-ai.git
+cd smartchat-ai
 
-1. Go to [vercel.com](https://vercel.com)
-2. Import your GitHub repo
-3. Settings:
-   - Framework Preset: Vite
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-   - Environment Variables:
-     - `VITE_API_URL`: (your backend URL)
+# Edit environment
+cp backend/.env.example backend/.env
+nano backend.env  # Add your values
 
-### Netlify
+# Run with Docker Compose
+docker-compose up -d
+```
 
-1. Connect repo to Netlify
-2. Build settings:
-   - Build Command: `npm run build`
-   - Publish: `dist`
-3. Add environment variable for API URL
+---
+
+### Option 3: Railway
+
+1. Go to [railway.app](https://railway.app) → Start New Project
+2. Connect GitHub repo
+3. Add PostgreSQL plugin
+4. Set environment variables:
+   ```
+   NODE_ENV=production
+   DATABASE_URL=${{PostgreSQL.DATABASE_URL}}
+   JWT_SECRET=<random-string>
+   OPENAI_API_KEY=<your-key>
+   ```
+5. Deploy both backend and frontend services
+
+---
+
+## Get OpenAI API Key
+
+1. Go to [platform.openai.com](https://platform.openai.com)
+2. Sign up / Login
+3. API Keys → Create new secret key
+4. Add billing (requires credit card for API usage)
+5. Copy key and add to your deployment
+
+**Note:** Pay-as-you-go pricing - you only pay for what you use. GPT-3.5 is cheap (~$0.002/1k tokens).
 
 ---
 
 ## Environment Variables Reference
 
-### Backend (.env)
-
-```env
-# Required
-PORT=3000
-NODE_ENV=production
-DATABASE_URL=postgres://user:pass@host:5432/dbname
-JWT_SECRET=<generate-random-string>
-
-# Optional
-OPENAI_API_KEY=sk-...
-OPENAI_MODEL=gpt-3.5-turbo
-FRONTEND_URL=https://your-domain.com
-```
-
-### Frontend (.env)
-
-```env
-VITE_API_URL=https://your-backend-api.onrender.com
-```
+| Variable | Description | Example |
+|----------|-------------|---------|
+| `NODE_ENV` | production/development | `production` |
+| `DATABASE_URL` | PostgreSQL connection | `postgres://user:pass@host:5432/db` |
+| `JWT_SECRET` | Random 32+ char string | `xyz123...` |
+| `OPENAI_API_KEY` | Your OpenAI key | `sk-...` |
+| `FRONTEND_URL` | Your frontend URL | `https://smartchat.onrender.com` |
+| `VITE_API_URL` | Backend API URL | `https://smartchat-api.onrender.com` |
 
 ---
 
-## Production Checklist
+## After Deploy
 
-- [ ] Set secure JWT_SECRET (32+ random characters)
-- [ ] Configure CORS for your frontend domain
-- [ ] Enable HTTPS
-- [ ] Set up database backups
-- [ ] Configure monitoring/logging
-- [ ] Set up error handling
+1. Visit your frontend URL
+2. Register a new account
+3. Create your first chatbot
+4. Add Q&A to knowledge base
+5. Embed widget on your website!
 
 ---
 
 ## Troubleshooting
 
-### CORS Errors
-- Make sure FRONTEND_URL matches your frontend domain exactly
+**CORS errors:** Ensure `FRONTEND_URL` matches exactly
 
-### Database Connection
-- Verify DATABASE_URL is correct
-- Check that database is accessible from your hosting region
+**Database connection:** Verify `DATABASE_URL` is correct
 
-### Build Failures
-- Ensure Node.js version matches (18+)
-- Check that all dependencies are in package.json
+**Build fails:** Check Node version (18+ required)
 
----
-
-## Support
-
-For issues, check the main README.md or open an issue on GitHub.
+**OpenAI errors:** Verify API key is valid and has credits
