@@ -51,7 +51,7 @@ router.post('/:chatbotId/chat', optionalAuth, async (req, res) => {
       VALUES (?, ?, 'user', ?)
     `).run(userMsgId, conversation.id, message);
 
-    // Generate AI response
+    // Generate AI response - try multiple providers
     const response = await generateAIResponse(message, chatbot);
 
     // Save bot response
@@ -79,131 +79,158 @@ router.post('/:chatbotId/chat', optionalAuth, async (req, res) => {
   }
 });
 
-// Authenticated: List conversations
-router.get('/', authenticate, (req, res) => {
-  try {
-    const conversations = db.prepare(`
-      SELECT c.*, ch.name as chatbot_name
-      FROM conversations c
-      JOIN chatbots ch ON c.chatbot_id = ch.id
-      WHERE ch.user_id = ?
-      ORDER BY c.started_at DESC
-      LIMIT 50
-    `).all(req.user.id);
-
-    res.json(conversations);
-  } catch (error) {
-    console.error('List conversations error:', error);
-    res.status(500).json({ error: 'Failed to list conversations' });
-  }
-});
-
-// Authenticated: Get conversation details
-router.get('/:id', authenticate, (req, res) => {
-  try {
-    const conversation = db.prepare(`
-      SELECT c.*, ch.name as chatbot_name
-      FROM conversations c
-      JOIN chatbots ch ON c.chatbot_id = ch.id
-      WHERE c.id = ? AND ch.user_id = ?
-    `).get(req.params.id, req.user.id);
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    const messages = db.prepare(`
-      SELECT * FROM messages 
-      WHERE conversation_id = ?
-      ORDER BY created_at ASC
-    `).all(req.params.id);
-
-    res.json({ ...conversation, messages });
-  } catch (error) {
-    console.error('Get conversation error:', error);
-    res.status(500).json({ error: 'Failed to get conversation' });
-  }
-});
-
-// Authenticated: Update conversation (e.g., set satisfaction, end conversation)
-router.patch('/:id', authenticate, (req, res) => {
-  try {
-    const { status, satisfaction_score } = req.body;
-
-    const conversation = db.prepare(`
-      SELECT c.* FROM conversations c
-      JOIN chatbots ch ON c.chatbot_id = ch.id
-      WHERE c.id = ? AND ch.user_id = ?
-    `).get(req.params.id, req.user.id);
-
-    if (!conversation) {
-      return res.status(404).json({ error: 'Conversation not found' });
-    }
-
-    db.prepare(`
-      UPDATE conversations 
-      SET status = COALESCE(?, status),
-          satisfaction_score = COALESCE(?, satisfaction_score),
-          ended_at = CASE WHEN ? = 'ended' THEN CURRENT_TIMESTAMP ELSE ended_at END
-      WHERE id = ?
-    `).run(status, satisfaction_score, status, req.params.id);
-
-    const updated = db.prepare('SELECT * FROM conversations WHERE id = ?').get(req.params.id);
-    res.json(updated);
-  } catch (error) {
-    console.error('Update conversation error:', error);
-    res.status(500).json({ error: 'Failed to update conversation' });
-  }
-});
-
-// AI Response generation
+// AI Response generation - tries multiple providers
 async function generateAIResponse(message, chatbot) {
-  // Check if OpenAI API key is configured
-  const apiKey = process.env.OPENAI_API_KEY;
+  const knowledgeBase = JSON.parse(chatbot.knowledge_base || '[]');
   
-  if (!apiKey) {
-    // Fallback to rule-based responses
-    return generateRuleBasedResponse(message, chatbot);
+  // 1. Try rule-based first (always works)
+  const ruleResponse = generateRuleBasedResponse(message, chatbot);
+  if (ruleResponse !== chatbot.fallback_message) {
+    return ruleResponse;
   }
 
-  try {
-    const knowledgeBase = JSON.parse(chatbot.knowledge_base || '[]');
-    
-    const systemPrompt = `You are a helpful customer support chatbot named "${chatbot.name}". 
-${chatbot.description ? `Description: ${chatbot.description}` : ''}
-Your knowledge base:
-${knowledgeBase.map(kb => `Q: ${kb.question}\nA: ${kb.answer}`).join('\n\n')}
-
-If you cannot find the answer in the knowledge base, respond with: ${chatbot.fallback_message}
-
-Be friendly, concise, and helpful.`;
-
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: message }
-        ],
-        max_tokens: 500,
-        temperature: 0.7
-      })
-    });
-
-    const data = await response.json();
-    return data.choices?.[0]?.message?.content || chatbot.fallback_message;
-  } catch (error) {
-    console.error('OpenAI API error:', error);
-    return generateRuleBasedResponse(message, chatbot);
+  // 2. Try Hugging Face (free)
+  if (process.env.HUGGINGFACE_API_KEY) {
+    try {
+      const hfResponse = await generateWithHuggingFace(message, chatbot);
+      if (hfResponse) return hfResponse;
+    } catch (e) {
+      console.error('HuggingFace error:', e.message);
+    }
   }
+
+  // 3. Try OpenAI (if key provided)
+  if (process.env.OPENAI_API_KEY) {
+    try {
+      const openaiResponse = await generateWithOpenAI(message, chatbot);
+      if (openaiResponse) return openaiResponse;
+    } catch (e) {
+      console.error('OpenAI error:', e.message);
+    }
+  }
+
+  // 4. Try Cohere (free tier)
+  if (process.env.COHERE_API_KEY) {
+    try {
+      const cohereResponse = await generateWithCohere(message, chatbot);
+      if (cohereResponse) return cohereResponse;
+    } catch (e) {
+      console.error('Cohere error:', e.message);
+    }
+  }
+
+  // Fallback
+  return chatbot.fallback_message;
 }
 
-// Rule-based fallback
+// Hugging Face Inference API (FREE)
+async function generateWithHuggingFace(message, chatbot) {
+  const knowledgeBase = JSON.parse(chatbot.knowledge_base || '[]');
+  
+  const prompt = `You are a helpful customer support assistant for "${chatbot.name}". 
+${chatbot.description ? `Description: ${chatbot.description}` : ''}
+
+Knowledge Base:
+${knowledgeBase.map(kb => `Q: ${kb.question}\nA: ${kb.answer}`).join('\n\n')}
+
+If you cannot find the answer, say: ${chatbot.fallback_message}
+
+User: ${message}
+Assistant:`;
+
+  const response = await fetch(
+    'https://api-inference.huggingface.co/models/microsoft/DialoGPT-medium',
+    {
+      headers: {
+        'Authorization': `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+        'Content-Type': 'application/json'
+      },
+      method: 'POST',
+      body: JSON.stringify({
+        inputs: prompt,
+        parameters: { max_length: 200 }
+      })
+    }
+  );
+
+  if (!response.ok) return null;
+  
+  const data = await response.json();
+  if (Array.isArray(data) && data[0]?.generated_text) {
+    const result = data[0].generated_text.split('Assistant:').pop().trim();
+    return result.slice(-500); // Limit length
+  }
+  
+  return null;
+}
+
+// OpenAI (paid but cheap)
+async function generateWithOpenAI(message, chatbot) {
+  const knowledgeBase = JSON.parse(chatbot.knowledge_base || '[]');
+  
+  const systemPrompt = `You are a helpful customer support chatbot named "${chatbot.name}". 
+${chatbot.description ? `Description: ${chatbot.description}` : ''}
+
+Knowledge Base:
+${knowledgeBase.map(kb => `Q: ${kb.question}\nA: ${kb.answer}`).join('\n\n')}
+
+If you cannot find the answer, say: ${chatbot.fallback_message}`;
+
+  const response = await fetch('https://api.openai.com/v1/chat/completions', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.OPENAI_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: process.env.OPENAI_MODEL || 'gpt-3.5-turbo',
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: message }
+      ],
+      max_tokens: 500,
+      temperature: 0.7
+    })
+  });
+
+  if (!response.ok) return null;
+  
+  const data = await response.json();
+  return data.choices?.[0]?.message?.content || null;
+}
+
+// Cohere (free tier available)
+async function generateWithCohere(message, chatbot) {
+  const knowledgeBase = JSON.parse(chatbot.knowledge_base || '[]');
+  
+  const prompt = `You are a helpful customer support assistant for "${chatbot.name}".
+${chatbot.description ? `Description: ${chatbot.description}\n` : ''}
+Knowledge Base:
+${knowledgeBase.map(kb => `Q: ${kb.question}\nA: ${kb.answer}`).join('\n\n')}
+
+User question: ${message}
+Helpful answer:`;
+
+  const response = await fetch('https://api.cohere.ai/v1/generate', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${process.env.COHERE_API_KEY}`
+    },
+    body: JSON.stringify({
+      model: 'command-nightly',
+      prompt,
+      max_tokens: 200
+    })
+  });
+
+  if (!response.ok) return null;
+  
+  const data = await response.json();
+  return data.generations?.[0]?.text?.trim() || null;
+}
+
+// Rule-based fallback (always works)
 function generateRuleBasedResponse(message, chatbot) {
   const knowledgeBase = JSON.parse(chatbot.knowledge_base || '[]');
   const lowerMessage = message.toLowerCase();
@@ -211,7 +238,7 @@ function generateRuleBasedResponse(message, chatbot) {
   // Simple keyword matching
   for (const kb of knowledgeBase) {
     const keywords = kb.question.toLowerCase().split(' ');
-    if (keywords.some(keyword => lowerMessage.includes(keyword))) {
+    if (keywords.some(keyword => keyword.length > 3 && lowerMessage.includes(keyword))) {
       return kb.answer;
     }
   }
