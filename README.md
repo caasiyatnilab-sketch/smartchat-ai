@@ -1,30 +1,40 @@
-# SmartChat AI 🤖
+# 🤖 SmartChat AI
 
-**AI Customer Support Chatbot for Small Businesses**
-
-## Live Demo
-👉 **https://caasiyatnilab-sketch.github.io/smartchat-ai/**
-
-Try the demo chatbot - it's working right now!
+AI-powered customer support chatbot with multi-provider support.
 
 ## Features
-- AI-powered chatbot responses
-- Easy to embed on any website
-- Knowledge base management
-- Analytics dashboard
-- Multiple subscription plans
+- 🧠 Multi-LLM: Groq, OpenRouter, Mistral, Together AI
+- 💬 Web-based chat UI
+- 🔧 Easy API key setup
+- 🚀 Deploy to Vercel/Netlify/Railway free
 
-## Full SaaS Code
-The complete backend + frontend code is in this repository. Deploy to Railway, Render, or any Node.js hosting.
+## Quick Start
+```bash
+# Frontend
+cd frontend
+npm install
+npm run dev
 
-## Tech Stack
-- **Frontend**: React + Tailwind CSS
-- **Backend**: Node.js + Express
-- **Database**: PostgreSQL/SQLite
-- **AI**: HuggingFace / OpenAI / Cohere
+# Backend (if applicable)
+npm install
+npm start
+```
 
-## Deployment
-See DEPLOY-ALL.md for deployment options.
+## Free AI APIs
+Add these to your `.env`:
+```
+GROQ_API_KEY=your_key_here       # Free at console.groq.com
+OPENROUTER_API_KEY=your_key_here # Free at openrouter.ai/keys
+```
 
-## License
-MIT
+## Deploy
+- **Vercel**: `vercel --prod`
+- **Railway**: Connect repo at railway.app
+- **Render**: Connect repo at render.com
+
+## Bots
+This repo has 19 autonomous bots for maintenance:
+Health, Security, Updates, Deploy, AI Agents, and more.
+
+---
+Built with ❤️
