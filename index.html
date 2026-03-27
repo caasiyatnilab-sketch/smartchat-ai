@@ -3,193 +3,55 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>SmartChat AI - Next-Gen Customer Support</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-  <script>
-    tailwind.config = {
-      theme: {
-        extend: {
-          fontFamily: { 'display': ['Space Grotesk', 'sans-serif'], 'body': ['Inter', 'sans-serif'] },
-          colors: { 'cyber': { 'dark': '#0a0a0f', 'card': '#12121a', 'border': '#1e1e2e', 'primary': '#6366f1' } }
-        }
-      }
-    }
-  </script>
+  <title>SmartChat AI</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
-    body { font-family: 'Inter', sans-serif; background: #0a0a0f; color: #e2e8f0; }
-    .font-display { font-family: 'Space Grotesk', sans-serif; }
-    .bg-grid { background-image: linear-gradient(rgba(99,102,241,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(99,102,241,0.03) 1px,transparent 1px); background-size: 50px 50px; }
-    .gradient-text { background: linear-gradient(135deg,#6366f1,#a855f7,#ec4899); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
-    .chat-container { background: rgba(18,18,26,0.8); backdrop-filter: blur(20px); border: 1px solid rgba(99,102,241,0.2); }
-    ::-webkit-scrollbar { width: 6px; }
-    ::-webkit-scrollbar-track { background: #12121a; }
-    ::-webkit-scrollbar-thumb { background: #6366f1; border-radius: 3px; }
-    .message-enter { animation: messageIn 0.3s ease-out; }
-    @keyframes messageIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-    .typing-indicator span { animation: typing 1.4s infinite; }
-    .typing-indicator span:nth-child(2) { animation-delay: 0.2s; }
-    .typing-indicator span:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes typing { 0%,60%,100% { transform: translateY(0); } 30% { transform: translateY(-5px); } }
-    .glow-primary { box-shadow: 0 0 30px rgba(99,102,241,0.4); }
-    .cyber-input { background: rgba(30,30,46,0.8); border: 1px solid rgba(99,102,241,0.3); transition: all 0.3s; }
-    .cyber-input:focus { border-color: #6366f1; box-shadow: 0 0 20px rgba(99,102,241,0.3); outline: none; }
-    .cyber-btn { background: linear-gradient(135deg,#6366f1,#8b5cf6); transition: all 0.3s; }
-    .cyber-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 30px rgba(99,102,241,0.5); }
+    *{margin:0;padding:0;box-sizing:border-box}
+    body{font-family:'Inter',system-ui;background:#fff;color:#1a1a1a;line-height:1.6}
+    .nav{padding:1.5rem 6%;display:flex;justify-content:space-between;align-items:center;border-bottom:1px solid #eee}
+    .logo{font-size:1.3rem;font-weight:700}.logo span{color:#6366f1}
+    .nav a{color:#666;text-decoration:none;margin-left:2rem;font-size:.9rem}.nav a:hover{color:#1a1a1a}
+    .btn{padding:.6rem 1.2rem;background:#6366f1;color:#fff;border:none;border-radius:6px;font-weight:600;font-size:.9rem;cursor:pointer;text-decoration:none}
+    .btn:hover{background:#4f46e5}
+    .hero{padding:6rem 6%;max-width:900px;margin:0 auto}
+    .hero h1{font-size:clamp(2rem,4vw,3rem);font-weight:700;line-height:1.2;margin-bottom:1rem}
+    .hero h1 span{color:#6366f1}
+    .hero p{color:#666;font-size:1.1rem;max-width:600px;margin-bottom:2rem}
+    .features{padding:3rem 6%;max-width:900px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr);gap:1.5rem}
+    .feature{padding:1.5rem;border:1px solid #eee;border-radius:8px}
+    .feature h3{font-size:.95rem;margin-bottom:.3rem}
+    .feature p{color:#888;font-size:.85rem}
+    .feature .num{font-size:1.5rem;font-weight:700;color:#6366f1;margin-bottom:.5rem}
+    .cta{text-align:center;padding:3rem 6%;background:#f8f9fa;margin-top:2rem}
+    .cta h2{font-size:1.8rem;margin-bottom:1rem}
+    footer{text-align:center;padding:2rem;color:#999;font-size:.85rem;border-top:1px solid #eee}
+    @media(max-width:600px){.features{grid-template-columns:1fr}.nav a:not(.btn){display:none}}
   </style>
 </head>
-<body class="min-h-screen bg-dark bg-grid">
-  <nav class="fixed top-0 left-0 right-0 z-50 bg-dark/80 backdrop-blur-xl border-b border-cyber-border">
-    <div class="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
-      <div class="flex items-center gap-3">
-        <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-cyber-primary to-purple-500 flex items-center justify-center" style="box-shadow:0 0 20px rgba(99,102,241,0.3);animation:pulse 2s infinite">
-          <span class="text-xl">🤖</span>
-        </div>
-        <span class="font-display font-bold text-xl">SmartChat<span class="gradient-text">AI</span></span>
-      </div>
-      <div class="hidden md:flex items-center gap-6">
-        <a href="#features" class="text-gray-400 hover:text-white transition">Features</a>
-        <a href="#demo" class="text-gray-400 hover:text-white transition">Demo</a>
-        <a href="https://github.com/caasiyatnilab-sketch/smartchat-ai" target="_blank" class="text-gray-400 hover:text-white transition">GitHub</a>
-      </div>
+<body>
+  <div class="nav">
+    <div class="logo">Smart<span>Chat</span></div>
+    <div>
+      <a href="#features">Features</a>
+      <a href="demo.html">Demo</a>
+      <a href="https://github.com/caasiyatnilab-sketch/smartchat-ai">Source</a>
+      <a href="demo.html" class="btn">Try it</a>
     </div>
-  </nav>
-
-  <section class="pt-32 pb-16 px-4">
-    <div class="max-w-4xl mx-auto text-center">
-      <div class="inline-flex items-center gap-2 px-4 py-2 rounded-full bg-cyber-card border border-cyber-border mb-8">
-        <span class="w-2 h-2 rounded-full bg-green-500"></span>
-        <span class="text-sm text-gray-400">⚡ Smart AI - 24/7 Available</span>
-      </div>
-      <h1 class="font-display text-5xl md:text-6xl font-bold mb-6 leading-tight">Next-Gen <span class="gradient-text">AI Customer Support</span></h1>
-      <p class="text-xl text-gray-400 mb-10 max-w-2xl mx-auto">Engage visitors 24/7 with intelligent AI chatbots. Boost conversions, automate support, and scale your business.</p>
-      <div class="flex flex-col sm:flex-row gap-4 justify-center">
-        <a href="#demo" class="cyber-btn px-8 py-4 rounded-xl font-semibold text-white">Try Demo →</a>
-        <a href="https://github.com/caasiyatnilab-sketch/smartchat-ai" target="_blank" class="px-8 py-4 rounded-xl font-semibold border border-cyber-border hover:bg-cyber-card transition">⭐ Star on GitHub</a>
-      </div>
-    </div>
-  </section>
-
-  <section id="features" class="py-16 px-4">
-    <div class="max-w-6xl mx-auto">
-      <h2 class="font-display text-3xl font-bold text-center mb-12">Why <span class="gradient-text">SmartChat AI?</span></h2>
-      <div class="grid md:grid-cols-3 gap-6">
-        <div class="cyber-card p-6 rounded-2xl border border-cyber-border hover:border-cyber-primary transition">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center mb-4 text-2xl">🧠</div>
-          <h3 class="font-display font-semibold text-lg mb-2">Smart AI</h3>
-          <p class="text-gray-400 text-sm">Advanced AI understands context and provides intelligent answers.</p>
-        </div>
-        <div class="cyber-card p-6 rounded-2xl border border-cyber-border hover:border-cyber-primary transition">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-pink-500 to-rose-600 flex items-center justify-center mb-4 text-2xl">⚡</div>
-          <h3 class="font-display font-semibold text-lg mb-2">Instant</h3>
-          <p class="text-gray-400 text-sm">Visitors get instant answers 24/7, 365 days a year.</p>
-        </div>
-        <div class="cyber-card p-6 rounded-2xl border border-cyber-border hover:border-cyber-primary transition">
-          <div class="w-12 h-12 rounded-xl bg-gradient-to-br from-cyan-500 to-blue-600 flex items-center justify-center mb-4 text-2xl">📊</div>
-          <h3 class="font-display font-semibold text-lg mb-2">Analytics</h3>
-          <p class="text-gray-400 text-sm">Track conversations and improve over time.</p>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section id="demo" class="py-16 px-4">
-    <div class="max-w-md mx-auto">
-      <h2 class="font-display text-3xl font-bold text-center mb-4">Chat with <span class="gradient-text">Smart AI</span></h2>
-      <p class="text-center text-gray-400 mb-8">Try it now - Ask me anything!</p>
-      <div class="chat-container rounded-2xl overflow-hidden glow-primary">
-        <div class="bg-gradient-to-r from-cyber-primary to-purple-600 p-4 flex items-center gap-3">
-          <div class="relative">
-            <div class="w-10 h-10 rounded-full bg-white/20 flex items-center justify-center"><span class="text-xl">🤖</span></div>
-            <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 rounded-full border-2 border-cyber-card"></span>
-          </div>
-          <div><p class="font-semibold text-white">SmartChat AI</p><p class="text-xs text-white/70">Online</p></div>
-        </div>
-        <div id="chatMessages" class="p-4 space-y-3 h-96 overflow-y-auto">
-          <div class="message-enter bg-cyber-card rounded-2xl rounded-tl-sm p-3 max-w-[85%]">
-            <p class="text-sm">👋 Hello! I'm SmartChat AI. How can I help you today?</p>
-          </div>
-        </div>
-        <div class="p-4 border-t border-cyber-border">
-          <div class="flex gap-2">
-            <input type="text" id="chatInput" placeholder="Ask me anything..." class="cyber-input flex-1 px-4 py-3 rounded-xl text-white placeholder-gray-500" onkeypress="if(event.key==='Enter')sendMessage()">
-            <button onclick="sendMessage()" class="cyber-btn px-5 py-3 rounded-xl text-white font-semibold">➤</button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <footer class="py-8 px-4 border-t border-cyber-border text-center">
-    <p class="text-gray-500 text-sm">© 2024 SmartChat AI. Built with <span class="gradient-text">Aurora</span>.</p>
-  </footer>
-
-  <script>
-    const chatMessages = document.getElementById('chatMessages');
-    const chatInput = document.getElementById('chatInput');
-    
-    const responses = {
-      'hello': ["Hey there! 👋 How can I help you today?", "Hi! Welcome! What can I assist you with?"],
-      'hi': ["Hi there! 👋 How may I help?", "Hello! What can I do for you?"],
-      'hey': ["Hey! ✨ What's up?"],
-      'help': ["I can help with:\n\n📦 Products\n💰 Pricing\n🔧 Support\n\nJust ask!"],
-      'product': ["SmartChat AI helps businesses:\n\n✅ Automate support 24/7\n✅ Engage visitors\n✅ Capture leads\n✅ Track analytics\n\nWant more details?"],
-      'features': ["Features:\n\n🧠 AI-Powered\n📊 Analytics\n🔌 Easy Embed\n🎨 Customizable\n📱 Mobile Ready\n\nWhich interests you?"],
-      'price': ["Pricing:\n\n🆓 Free - $0/month\n💎 Starter - $19/month\n🚀 Pro - $49/month\n\nWhich plan?"],
-      'pricing': ["Flexible pricing:\n\nFree: $0 forever\nStarter: $19/month\nPro: $49/month\n\nCompare?"],
-      'cost': ["Starts at $0/month! Free plan has no time limit."],
-      'free': ["Yes! 🆓 Free forever:\n• 1 chatbot\n• 50 conversations\nNo credit card!"],
-      'how': ["Easy! 1) Sign up 2) Create bot 3) Copy code 4) Paste on site"],
-      'embed': ["Copy embed code → Paste before </body> on your website. Works everywhere!"],
-      'support': ["Contact: support@smartchat.ai or ask me!"],
-      'contact': ["Email: contact@smartchat.ai"],
-      'who are you': ["I'm SmartChat AI, an intelligent customer support assistant! 🤖"],
-      'thanks': ["You're welcome! 😊 Happy to help!", "No problem! 🙌"],
-      'thank': ["You're welcome! 😊"],
-      'bye': ["Goodbye! 👋 Come back anytime!", "Bye! ✨ Take care!"],
-      'default': ["That's great! Ask me about:\n📦 Products\n💰 Pricing\n🔧 Support\n❓ Anything else"]
-    };
-    
-    const keywords = {'how much': 'price', 'money': 'price', 'buy': 'price', 'pesos': 'price', 'start': 'how', 'begin': 'how', 'setup': 'how', 'install': 'embed', 'problem': 'support', 'issue': 'support', 'great': 'thanks', 'good': 'thanks'};
-    
-    function getResponse(message) {
-      const lower = message.toLowerCase();
-      for (const [key, value] of Object.entries(responses)) { if (lower.includes(key)) { const list = Array.isArray(value) ? value : [value]; return list[Math.floor(Math.random() * list.length)]; } }
-      for (const [key, value] of Object.entries(keywords)) { if (lower.includes(key)) { const list = Array.isArray(responses[value]) ? responses[value] : [responses[value]]; return list[Math.floor(Math.random() * list.length)]; } }
-      return responses['default'][Math.floor(Math.random() * responses['default'].length)];
-    }
-    
-    function addMessage(text, isUser) {
-      const div = document.createElement('div');
-      div.className = 'message-enter ' + (isUser ? 'ml-auto' : '');
-      div.innerHTML = isUser ? `<div class="bg-gradient-to-r from-indigo-600 to-purple-600 rounded-2xl rounded-tr-sm p-3 max-w-[85%] ml-auto"><p class="text-sm text-white">${escapeHtml(text)}</p></div>` : `<div class="bg-cyber-card rounded-2xl rounded-tl-sm p-3 max-w-[85%] border border-cyber-border"><p class="text-sm text-gray-200">${text.replace(/\n/g,'<br>')}</p></div>`;
-      chatMessages.appendChild(div);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    function escapeHtml(text) { const div = document.createElement('div'); div.textContent = text; return div.innerHTML; }
-    
-    function showTyping() {
-      const div = document.createElement('div');
-      div.id = 'typing';
-      div.className = 'message-enter';
-      div.innerHTML = `<div class="bg-cyber-card rounded-2xl rounded-tl-sm p-3 border border-cyber-border"><div class="typing-indicator flex gap-1"><span class="w-2 h-2 bg-gray-400 rounded-full"></span><span class="w-2 h-2 bg-gray-400 rounded-full"></span><span class="w-2 h-2 bg-gray-400 rounded-full"></span></div></div>`;
-      chatMessages.appendChild(div);
-      chatMessages.scrollTop = chatMessages.scrollHeight;
-    }
-    
-    function hideTyping() { const t = document.getElementById('typing'); if (t) t.remove(); }
-    
-    function sendMessage() {
-      const message = chatInput.value.trim();
-      if (!message) return;
-      addMessage(message, true);
-      chatInput.value = '';
-      showTyping();
-      setTimeout(() => { hideTyping(); addMessage(getResponse(message), false); }, 500 + Math.random() * 500);
-    }
-    chatInput.focus();
-  </script>
+  </div>
+  <div class="hero">
+    <h1>Customer support that <span>actually works</span></h1>
+    <p>AI-powered chatbot using free APIs. No monthly fees. Answers from your own knowledge base.</p>
+    <a href="demo.html" class="btn">Try the demo</a>
+  </div>
+  <div class="features" id="features">
+    <div class="feature"><div class="num">3</div><h3>AI Providers</h3><p>Groq, OpenRouter, HuggingFace. Auto-switches.</p></div>
+    <div class="feature"><div class="num">0</div><h3>Monthly Cost</h3><p>Uses free AI APIs. Pay only when you scale.</p></div>
+    <div class="feature"><div class="num">1</div><h3>Line of Code</h3><p>Drop-in widget for any website.</p></div>
+  </div>
+  <div class="cta">
+    <h2>Ready to try?</h2>
+    <a href="demo.html" class="btn">Start chatting</a>
+  </div>
+  <footer>Isaac Balintay | 2026</footer>
 </body>
 </html>
