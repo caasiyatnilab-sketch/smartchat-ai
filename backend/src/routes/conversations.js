@@ -29,10 +29,10 @@ router.post('/:chatbotId/chat', optionalAuth, async (req, res) => {
     db.prepare('INSERT INTO messages (id, conversation_id, role, content) VALUES (?, ?, "assistant", ?)').run(uuidv4(), conversation.id, response);
     db.prepare('INSERT INTO analytics (id, chatbot_id, event_type, event_data) VALUES (?, ?, "message", ?)').run(uuidv4(), chatbotId, JSON.stringify({ conversation_id: conversation.id }));
 
-    res.json({ response, conversation_id: conversation.id, visitor_id: visitorId });
+    res.json({ response });
   } catch (error) {
-    console.error('Chat error:', error);
-    res.status(500).json({ error: 'Failed to process message' });
+    console.error('Error in chat endpoint:', error);
+    res.status(500).json({ error: 'Internal server error' });
   }
 });
 
@@ -56,15 +56,26 @@ async function generateWithGroq(message, chatbot) {
 async function generateWithOpenRouter(message, chatbot) {
   const kb = JSON.parse(chatbot.knowledge_base || '[]');
   const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENROUTER_API_KEY}`}, body:JSON.stringify({model:'openrouter/free',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
-  if (!res.ok) return null; const d = await res.json(); return d.choices?.[0]?.message?.content || null;
+  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENROUTER_API_KEY}`}, body:JSON.stringify({model:'nvidia/nemotron-3-super-120b-a12b:free',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
+  if (!res.ok) return null; 
+  const d = await res.json();
+  // Handle OpenRouter's response format - some models put answer in reasoning, some in message.content
+  if (d.choices?.[0]?.message?.content) {
+    return d.choices[0].message.content;
+  } else if (d.choices?.[0]?.reasoning) {
+    // Extract the actual answer from reasoning if needed
+    return d.choices[0].reasoning;
+  }
+  return null;
 }
 
 async function generateWithHuggingFace(message, chatbot) {
   const kb = JSON.parse(chatbot.knowledge_base || '[]');
   const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
   const res = await fetch('https://router.huggingface.co/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.HF_TOKEN}`}, body:JSON.stringify({model:'meta-llama/Llama-3.1-8B-Instruct',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
-  if (!res.ok) return null; const d = await res.json(); return d.choices?.[0]?.message?.content || null;
+  if (!res.ok) return null; 
+  const d = await res.json();
+  return d.choices?.[0]?.message?.content || null;
 }
 
 function generateRuleBasedResponse(message, chatbot) {
