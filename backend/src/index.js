@@ -1,4 +1,4 @@
-import 'dotenv/config';
+import dotenv from 'dotenv';
 import express from 'express';
 import cors from 'cors';
 import { fileURLToPath } from 'url';
@@ -11,20 +11,16 @@ import subscriptionRoutes from './routes/subscription.js';
 import webhookRoutes from './routes/webhooks.js';
 import { initDatabase } from './models/database.js';
 
+dotenv.config(); // Fixed: using ES module import
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// Initialize database
-initDatabase();
-
 // Middleware
-app.use(cors({
-  origin: process.env.FRONTEND_URL || 'http://localhost:5173',
-  credentials: true
-}));
+app.use(cors());
 app.use(express.json());
 
 // Routes
@@ -35,29 +31,26 @@ app.use('/api/analytics', analyticsRoutes);
 app.use('/api/subscription', subscriptionRoutes);
 app.use('/api/webhooks', webhookRoutes);
 
-// Health check
-app.get('/api/health', (req, res) => {
+// Initialize database
+initDatabase();
+
+// Root endpoint
+app.get('/', (req, res) => {
   res.json({ 
-    status: 'ok', 
-    timestamp: new Date().toISOString(),
-    version: '1.0.0'
+    message: 'SmartChat AI API is running', 
+    version: '1.0.0',
+    timestamp: new Date().toISOString()
   });
 });
 
-// Error handling middleware
-app.use((err, req, res, next) => {
-  console.error(err.stack);
-  res.status(500).json({ error: 'Something went wrong!' });
+// Health check
+app.get('/health', (req, res) => {
+  res.json({ 
+    status: 'healthy', 
+    timestamp: new Date().toISOString() 
+  });
 });
-
-// Serve static files in production
-if (process.env.NODE_ENV === 'production') {
-  app.use(express.static(join(__dirname, '../frontend/dist')));
-}
 
 app.listen(PORT, () => {
-  console.log(`🚀 SmartChat AI Backend running on port ${PORT}`);
-  console.log(`   Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`Server running on port ${PORT}`);
 });
-
-export default app;
