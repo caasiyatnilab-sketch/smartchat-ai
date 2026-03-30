@@ -234,9 +234,7 @@ export async function initDatabase() {
   console.log('✅ Database initialized');
 }
 
-// Auto-init for non-test environments
-if (!isTest) {
-  await initDatabase();
-}
+// Auto-init on import (test mode uses in-memory SQLite)
+await initDatabase();
 
 export default db;
