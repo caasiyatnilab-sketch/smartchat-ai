@@ -40,9 +40,13 @@ async function generateAIResponse(message, chatbot) {
   const kb = JSON.parse(chatbot.knowledge_base || '[]');
   const rule = generateRuleBasedResponse(message, chatbot);
   if (rule !== chatbot.fallback_message) return rule;
-  if (process.env.GROQ_API_KEY) { try { const r = await generateWithGroq(message, chatbot); if (r) return r; } catch(e) {} }
-  if (process.env.OPENROUTER_API_KEY) { try { const r = await generateWithOpenRouter(message, chatbot); if (r) return r; } catch(e) {} }
-  if (process.env.HF_TOKEN) { try { const r = await generateWithHuggingFace(message, chatbot); if (r) return r; } catch(e) {} }
+  // Try all available AI providers in order
+  if (process.env.GROQ_API_KEY) { try { const r = await generateWithGroq(message, chatbot); if (r) return r; } catch(e) { console.error('Groq failed:', e.message); } }
+  if (process.env.OPENROUTER_API_KEY) { try { const r = await generateWithOpenRouter(message, chatbot); if (r) return r; } catch(e) { console.error('OpenRouter failed:', e.message); } }
+  if (process.env.TOGETHER_API_KEY) { try { const r = await generateWithTogether(message, chatbot); if (r) return r; } catch(e) { console.error('Together failed:', e.message); } }
+  if (process.env.MISTRAL_API_KEY) { try { const r = await generateWithMistral(message, chatbot); if (r) return r; } catch(e) { console.error('Mistral failed:', e.message); } }
+  if (process.env.HF_TOKEN) { try { const r = await generateWithHuggingFace(message, chatbot); if (r) return r; } catch(e) { console.error('HuggingFace failed:', e.message); } }
+  if (process.env.OPENAI_API_KEY) { try { const r = await generateWithOpenAI(message, chatbot); if (r) return r; } catch(e) { console.error('OpenAI failed:', e.message); } }
   return chatbot.fallback_message;
 }
 
@@ -56,17 +60,44 @@ async function generateWithGroq(message, chatbot) {
 async function generateWithOpenRouter(message, chatbot) {
   const kb = JSON.parse(chatbot.knowledge_base || '[]');
   const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
-  const res = await fetch('https://openrouter.ai/api/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENROUTER_API_KEY}`}, body:JSON.stringify({model:'nvidia/nemotron-3-super-120b-a12b:free',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
-  if (!res.ok) return null; 
-  const d = await res.json();
-  // Handle OpenRouter's response format - some models put answer in reasoning, some in message.content
-  if (d.choices?.[0]?.message?.content) {
-    return d.choices[0].message.content;
-  } else if (d.choices?.[0]?.reasoning) {
-    // Extract the actual answer from reasoning if needed
-    return d.choices[0].reasoning;
+  // Try multiple free models in order of preference
+  const models = [
+    'nvidia/nemotron-3-super-120b-a12b:free',
+    'stepfun/step-3.5-flash:free',
+    'arcee-ai/trinity-mini:free',
+    'qwen/qwen3-next-80b-a3b-instruct:free',
+  ];
+  for (const model of models) {
+    try {
+      const res = await fetch('https://openrouter.ai/api/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENROUTER_API_KEY}`}, body:JSON.stringify({model,messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (d.choices?.[0]?.message?.content) return d.choices[0].message.content;
+      if (d.choices?.[0]?.message?.reasoning) return d.choices[0].message.reasoning;
+    } catch(e) { continue; }
   }
   return null;
+}
+
+async function generateWithTogether(message, chatbot) {
+  const kb = JSON.parse(chatbot.knowledge_base || '[]');
+  const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
+  const res = await fetch('https://api.together.xyz/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.TOGETHER_API_KEY}`}, body:JSON.stringify({model:'meta-llama/Llama-3-8b-chat-hf',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
+  if (!res.ok) return null; const d = await res.json(); return d.choices?.[0]?.message?.content || null;
+}
+
+async function generateWithMistral(message, chatbot) {
+  const kb = JSON.parse(chatbot.knowledge_base || '[]');
+  const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
+  const res = await fetch('https://api.mistral.ai/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.MISTRAL_API_KEY}`}, body:JSON.stringify({model:'mistral-small-latest',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
+  if (!res.ok) return null; const d = await res.json(); return d.choices?.[0]?.message?.content || null;
+}
+
+async function generateWithOpenAI(message, chatbot) {
+  const kb = JSON.parse(chatbot.knowledge_base || '[]');
+  const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
+  const res = await fetch('https://api.openai.com/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OPENAI_API_KEY}`}, body:JSON.stringify({model:'gpt-4o-mini',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
+  if (!res.ok) return null; const d = await res.json(); return d.choices?.[0]?.message?.content || null;
 }
 
 async function generateWithHuggingFace(message, chatbot) {
