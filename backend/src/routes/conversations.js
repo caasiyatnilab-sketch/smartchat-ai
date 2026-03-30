@@ -41,6 +41,7 @@ async function generateAIResponse(message, chatbot) {
   const rule = generateRuleBasedResponse(message, chatbot);
   if (rule !== chatbot.fallback_message) return rule;
   // Try all available AI providers in order
+  if (process.env.OLLAMA_API_KEY) { try { const r = await generateWithOllama(message, chatbot); if (r) return r; } catch(e) { console.error('Ollama failed:', e.message); } }
   if (process.env.GROQ_API_KEY) { try { const r = await generateWithGroq(message, chatbot); if (r) return r; } catch(e) { console.error('Groq failed:', e.message); } }
   if (process.env.OPENROUTER_API_KEY) { try { const r = await generateWithOpenRouter(message, chatbot); if (r) return r; } catch(e) { console.error('OpenRouter failed:', e.message); } }
   if (process.env.TOGETHER_API_KEY) { try { const r = await generateWithTogether(message, chatbot); if (r) return r; } catch(e) { console.error('Together failed:', e.message); } }
@@ -91,6 +92,22 @@ async function generateWithMistral(message, chatbot) {
   const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
   const res = await fetch('https://api.mistral.ai/v1/chat/completions', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.MISTRAL_API_KEY}`}, body:JSON.stringify({model:'mistral-small-latest',messages:[{role:'system',content:system},{role:'user',content:message}],max_tokens:500}) });
   if (!res.ok) return null; const d = await res.json(); return d.choices?.[0]?.message?.content || null;
+}
+
+async function generateWithOllama(message, chatbot) {
+  const kb = JSON.parse(chatbot.knowledge_base || '[]');
+  const system = `You are "${chatbot.name}", a helpful assistant.${chatbot.description ? ' '+chatbot.description : ''}\nKnowledge:\n${kb.map(k=>`Q: ${k.question}\nA: ${k.answer}`).join('\n')}\nIf unsure say: ${chatbot.fallback_message}`;
+  // Try multiple models in order of preference
+  const models = ['gemma3:4b', 'ministral-3:3b', 'gemma3:12b', 'nemotron-3-nano:30b'];
+  for (const model of models) {
+    try {
+      const res = await fetch('https://ollama.com/api/chat', { method:'POST', headers:{'Content-Type':'application/json','Authorization':`Bearer ${process.env.OLLAMA_API_KEY}`}, body:JSON.stringify({model,messages:[{role:'system',content:system},{role:'user',content:message}],stream:false}) });
+      if (!res.ok) continue;
+      const d = await res.json();
+      if (d.message?.content) return d.message.content;
+    } catch(e) { continue; }
+  }
+  return null;
 }
 
 async function generateWithOpenAI(message, chatbot) {
